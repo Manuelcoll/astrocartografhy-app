@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="RickyManu">
+  <link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#000000">
+    <title>AstroCartoGraphy 3D - Astro Cartografía por RickyManu</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; overflow: hidden; background: #000010; }
+        body::before { content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: radial-gradient(1px 1px at 25% 15%, white, transparent), radial-gradient(1px 1px at 50% 40%, white, transparent), radial-gradient(1.5px 1.5px at 15% 85%, white, transparent), radial-gradient(1px 1px at 90% 10%, white, transparent), radial-gradient(2px 2px at 70% 60%, white, transparent); background-repeat: repeat; background-size: 250px 250px; opacity: 0.8; pointer-events: none; z-index: 0; }
+        body.tema-claro { background: #d6eaf8; } body.tema-claro::before { opacity: 0.2; }
+        #globeViz { height: 100vh; width: 100vw; cursor: grab; position: relative; z-index: 1; } #globeViz:active { cursor: grabbing; }
+        .campo { display: flex; flex-direction: column; gap: 8px; } .campo input { width: 100%; box-sizing: border-box; font-size: 15px; }
+        .acciones { display: flex; gap: 8px; margin-top: 10px; } .acciones button { flex: 1; } .acciones .sec { background: #607d8b; }
+        label { font-weight: bold; font-size: 14px; color: #333; }
+        input[type="date"], input[type="time"] { padding: 6px; border: 1px solid #ccc; border-radius: 4px; outline: none; }
+        button { background: #2e7d32; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; padding: 8px 15px; transition: background 0.2s; } button:hover { background: #1b5e20; } button.activo { background: #1b5e20; box-shadow: inset 0 0 0 2px #fff; }
+        #menuBtn { position: absolute; top: 20px; right: 20px; z-index: 1002; width: 44px; height: 44px; padding: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background: #2e7d32; }
+        #menuBtn span { display: block; width: 22px; height: 3px; background: #fff; border-radius: 2px; transition: transform 0.25s, opacity 0.25s; }
+        #menuBtn.open span:nth-child(1) { transform: translateY(8px) rotate(45deg); } #menuBtn.open span:nth-child(2) { opacity: 0; } #menuBtn.open span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+        #sideMenu { position: absolute; top: 0; right: 0; bottom: 0; width: 270px; z-index: 1001; background: rgba(255, 255, 255, 0.96); box-shadow: -4px 0 18px rgba(0,0,0,0.25); padding: 78px 18px 20px; box-sizing: border-box; overflow-y: auto; transform: translateX(105%); transition: transform 0.3s ease; }
+        #sideMenu.open { transform: translateX(0); }
+        #sideMenu h3 { margin: 18px 0 8px; font-size: 15px; color: #1b5e20; display: flex; align-items: center; justify-content: space-between; }
+        .helpBtn { width: 18px; height: 18px; border-radius: 50%; background: #1b5e20; color: #fff; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border: none; padding: 0; flex: none; }
+        .item { display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 13px; color: #333; cursor: pointer; user-select: none; }
+        .item input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2e7d32; margin: 0; }
+        .item .glyph { width: 20px; text-align: center; font-size: 16px; } .swatch { width: 20px; height: 12px; border-radius: 3px; border: 1px solid #888; flex: none; } .colorPick { width: 22px; height: 20px; padding: 0; border: 1px solid #888; border-radius: 4px; cursor: pointer; flex: none; background: none; }
+        .quick { display: flex; gap: 8px; margin-top: 8px; } .quick button { flex: 1; padding: 6px 8px; font-size: 12px; background: #607d8b; } .quick button:hover { background: #455a64; }
+        #langBox { margin-bottom: 14px; } #langSelect { width: 100%; padding: 7px; border-radius: 6px; border: 1px solid #ccc; font-size: 13px; background: #fff; }
+        #modalAyuda { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; }
+        #modalAyuda.open { display: flex; } #modalBox { background: #fff; max-width: 360px; width: 100%; border-radius: 10px; padding: 18px; font-size: 13px; line-height: 1.5; color: #333; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+        #modalBox h4 { margin: 0 0 8px; color: #1b5e20; } #modalBox button { margin-top: 12px; width: 100%; }
+    </style>
+    <script src="https://unpkg.com/globe.gl"></script>
+    <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+</head>
+<body>
+    <button id="menuBtn" onclick="toggleMenu()"><span></span><span></span><span></span></button>
+    <div id="sideMenu">
+        <div id="langBox">
+            <label style="font-size:12px">🌐 Idioma / Language</label>
+            <select id="langSelect" onchange="cambiarIdioma(this.value)">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="zh">中文</option>
+                <option value="hi">हिन्दी</option>
+                <option value="pt">Português</option>
+                <option value="ru">Русский</option>
+                <option value="ja">日本語</option>
+                <option value="fr">Français</option>
+                <option value="it">Italiano</option>
+                <option value="ur">اردو</option>
+            </select>
+        </div>
+        <h3>Vista del globo <button class="helpBtn" onclick="abrirAyuda('vista')">?</button></h3>
+        <div class="quick">
+            <button id="btnOscuro" class="activo" onclick="setTema('oscuro')">Oscura</button>
+            <button id="btnClaro" onclick="setTema('claro')">Clara</button>
+        </div>
+        <h3>Fecha y hora UTC <button class="helpBtn" onclick="abrirAyuda('fecha')">?</button></h3>
+        <div class="campo"><input type="date" id="dateInput"><input type="time" id="timeInput"></div>
+        <div class="acciones"><button id="btnCalcular" onclick="actualizarGlobo()">Calcular</button><button id="btnAhora" class="sec" onclick="usarAhora()">Ahora</button></div>
+        <h3>Puntos angulares <button class="helpBtn" onclick="abrirAyuda('angulos')">?</button></h3><div id="listaAngulos"></div>
+        <h3>Astros <button class="helpBtn" onclick="abrirAyuda('astros')">?</button></h3><div id="listaAstros"></div>
+        <div class="quick"><button id="btnTodos" onclick="marcarAstros(true)">Todos</button><button id="btnNinguno" onclick="marcarAstros(false)">Ninguno</button></div>
+    </div>
+    <div id="modalAyuda" onclick="cerrarAyuda()"><div id="modalBox" onclick="event.stopPropagation()"><h4 id="modalTitulo"></h4><div id="modalTexto"></div><button onclick="cerrarAyuda()" id="btnCerrarAyuda">Entendido</button></div></div>
+    <div id="globeViz"></div>
+    <script>
+        const I18N = {
+            es: { oscura: 'Oscura', clara: 'Clara', calcular: 'Calcular', ahora: 'Ahora', todos: 'Todos', ninguno: 'Ninguno', cerrar: 'Entendido', planetas: ['Sol','Luna','Mercurio','Venus','Marte','Júpiter','Saturno','Urano','Neptuno','Plutón'], angulos: ['Ascendente','Medio Cielo','Descendente','Fondo del Cielo'], ayuda: { vista_t: 'Vista del globo', vista_d: 'Vista oscura es el mapa satelital clásico. Vista clara es mapa estilo carta con mares celestes y tierras blancas, ideal para ver las líneas con más contraste.', fecha_t: 'Fecha y hora', fecha_d: 'Todo se calcula en UTC. Usa "Ahora" para el momento actual. Las líneas muestran dónde los planetas estaban angulares en ese instante.', angulos_t: 'Puntos angulares (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC se mantienen en todos los idiomas porque es código universal. Por defecto ves AC y MC. Podés activar DC e IC. Tipos de línea: AC = línea continua gruesa, MC = punteada corta, IC = rayas largas, DC = intermedia. En el globo se marcan solo como AC, MC, etc.', astros_t: 'Astros y colores', astros_d: 'Cada astro tiene un color por defecto. Podés cambiar el color con el selector. Así identificás en el plano por colores sin necesidad de jeroglíficos, para una visión clara y limpia.' } },
+            en: { oscura: 'Dark', clara: 'Light', calcular: 'Calculate', ahora: 'Now', todos: 'All', ninguno: 'None', cerrar: 'Got it', planetas: ['Sun','Moon','Mercury','Venus','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto'], angulos: ['Ascendant','Midheaven','Descendant','Imum Coeli'], ayuda: { vista_t: 'Globe view', vista_d: 'Dark is the classic satellite map. Light is a chart-style map with blue seas and white lands, ideal to see lines with more contrast.', fecha_t: 'Date and time', fecha_d: 'Everything is calculated in UTC. Use "Now" for the current moment. Lines show where planets were angular at that instant.', angulos_t: 'Angular points (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC are kept in all languages because it is universal code. By default you see AC and MC. You can enable DC and IC. Line styles: AC = thick solid, MC = short dotted, IC = long dashed, DC = intermediate. On the globe they are marked just as AC, MC, etc.', astros_t: 'Planets and colors', astros_d: 'Each planet has a default color. You can change it. This way you identify on the map by colors without hieroglyphs, for a clear vision.' } },
+            zh: { oscura: '暗色', clara: '亮色', calcular: '计算', ahora: '现在', todos: '全部', ninguno: '无', cerrar: '明白了', planetas: ['太阳','月亮','水星','金星','火星','木星','土星','天王星','海王星','冥王星'], angulos: ['上升点','天顶','下降点','天底'], ayuda: { vista_t: '地球视图', vista_d: '暗色是经典卫星地图。亮色是海图风格，蓝色海洋白色陆地，更易看清线条。', fecha_t: '日期和时间', fecha_d: '全部以UTC计算。使用“现在”获取当前时刻。线条显示行星在该时刻成角的位置。', angulos_t: '角点 (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC 在所有语言中保持不变，因为是通用代码。默认显示AC和MC，你可以启用DC和IC。线型：AC=粗实线，MC=短点线，IC=长虚线，DC=中线。地球上仅标记为AC, MC等。', astros_t: '行星和颜色', astros_d: '每个行星有默认颜色，你可以更改选择器。这样无需象形文字，仅靠颜色即可在地图上识别，视野清晰。' } },
+            hi: { oscura: 'गहरा', clara: 'हल्का', calcular: 'गणना', ahora: 'अभी', todos: 'सभी', ninguno: 'कोई नहीं', cerrar: 'समझ गया', planetas: ['सूर्य','चंद्रमा','बुध','शुक्र','मंगल','बृहस्पति','शनि','यूरेनस','नेपच्यून','प्लूटो'], angulos: ['लग्न','मध्य आकाश','सप्तम','चतुर्थ'], ayuda: { vista_t: 'ग्लोब दृश्य', vista_d: 'गहरा क्लासिक सैटेलाइट नक्शा है। हल्का चार्ट-शैली है, नीले समुद्र सफेद जमीन, रेखाएँ साफ दिखती हैं।', fecha_t: 'तिथि और समय', fecha_d: 'सब कुछ UTC में गणना होती है। अभी के लिए "अभी" उपयोग करें। रेखाएँ दिखाती हैं कि उस क्षण ग्रह कहाँ कोणीय थे।', angulos_t: 'कोणीय बिंदु (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC सभी भाषाओं में समान रहते हैं क्योंकि यह सार्वभौमिक कोड है। डिफ़ॉल्ट में AC और MC दिखते हैं। DC और IC चालू कर सकते हैं। रेखा प्रकार: AC=मोटी ठोस, MC=छोटी बिंदीदार, IC=लंबी धारीदार।', astros_t: 'ग्रह और रंग', astros_d: 'प्रत्येक ग्रह का डिफ़ॉल्ट रंग है। आप रंग बदल सकते हैं। इस तरह आप बिना प्रतीकों के रंगों से पहचान सकते हैं।' } },
+            pt: { oscura: 'Escura', clara: 'Clara', calcular: 'Calcular', ahora: 'Agora', todos: 'Todos', ninguno: 'Nenhum', cerrar: 'Entendi', planetas: ['Sol','Lua','Mercúrio','Vênus','Marte','Júpiter','Saturno','Urano','Netuno','Plutão'], angulos: ['Ascendente','Meio do Céu','Descendente','Fundo do Céu'], ayuda: { vista_t: 'Vista do globo', vista_d: 'Escura é o mapa de satélite clássico. Clara é estilo carta com mares azuis e terras brancas, ideal para ver as linhas com contraste.', fecha_t: 'Data e hora', fecha_d: 'Tudo é calculado em UTC. Use "Agora" para o momento atual. As linhas mostram onde os planetas estavam angulares naquele instante.', angulos_t: 'Pontos angulares (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC são mantidos em todos os idiomas por ser código universal. Por padrão vê AC e MC. Pode ativar DC e IC. Estilos: AC = linha grossa contínua, MC = pontilhado curto, IC = traços longos.', astros_t: 'Astros e cores', astros_d: 'Cada astro tem uma cor padrão. Pode mudar a cor. Assim identifica no mapa por cores sem precisar de hieróglifos, para uma visão clara.' } },
+            ru: { oscura: 'Тёмная', clara: 'Светлая', calcular: 'Рассчитать', ahora: 'Сейчас', todos: 'Все', ninguno: 'Ничего', cerrar: 'Понятно', planetas: ['Солнце','Луна','Меркурий','Венера','Марс','Юпитер','Сатурн','Уран','Нептун','Плутон'], angulos: ['Асцендент','Середина Неба','Десцендент','Надир'], ayuda: { vista_t: 'Вид глобуса', vista_d: 'Тёмный - классическая спутниковая карта. Светлый - картографический стиль, синие моря, белые земли, линии контрастнее.', fecha_t: 'Дата и время', fecha_d: 'Всё рассчитывается в UTC. Используйте "Сейчас" для текущего момента. Линии показывают, где планеты были угловыми.', angulos_t: 'Угловые точки (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC сохраняются на всех языках, это универсальный код. По умолчанию AC и MC. Можно включить DC и IC. Стили: AC = толстая сплошная, MC = короткий пунктир, IC = длинные штрихи.', astros_t: 'Планеты и цвета', astros_d: 'У каждой планеты свой цвет по умолчанию. Вы можете изменить цвет. Так вы различаете на карте по цветам без иероглифов.' } },
+            ja: { oscura: 'ダーク', clara: 'ライト', calcular: '計算', ahora: '今', todos: '全て', ninguno: 'なし', cerrar: '了解', planetas: ['太陽','月','水星','金星','火星','木星','土星','天王星','海王星','冥王星'], angulos: ['アセンダント','MC・天頂','ディセンダント','IC・天底'], ayuda: { vista_t: '地球儀の表示', vista_d: 'ダークは従来の衛星地図。ライトは海図スタイルで海は青、陸は白、ラインが見やすくなります。', fecha_t: '日付と時刻', fecha_d: 'すべてUTCで計算されます。「今」で現在の瞬間を取得。ラインはその瞬間に天体がアングルにあった場所を示します。', angulos_t: 'アングル (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, ICは万国共通コードなので全言語で同じです。デフォルトはACとMC。DCとICも有効化できます。線種: AC=太い実線, MC=短い点線, IC=長い破線。', astros_t: '天体と色', astros_d: '各天体にデフォルト色があります。色を変更できます。象形文字なしで色だけで地図上で識別でき、クリアな視界になります。' } },
+            fr: { oscura: 'Sombre', clara: 'Clair', calcular: 'Calculer', ahora: 'Maintenant', todos: 'Tous', ninguno: 'Aucun', cerrar: 'Compris', planetas: ['Soleil','Lune','Mercure','Vénus','Mars','Jupiter','Saturne','Uranus','Neptune','Pluton'], angulos: ['Ascendant','Milieu du Ciel','Descendant','Fond du Ciel'], ayuda: { vista_t: 'Vue du globe', vista_d: 'Sombre est la carte satellite classique. Clair est style carte marine avec mers bleues et terres blanches, idéal pour voir les lignes.', fecha_t: 'Date et heure', fecha_d: 'Tout est calculé en UTC. Utilisez "Maintenant" pour le moment actuel. Les lignes montrent où les planètes étaient angulaires.', angulos_t: 'Points angulaires (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC sont conservés dans toutes les langues car code universel. Par défaut AC et MC. Vous pouvez activer DC et IC. Styles: AC = trait épais continu, MC = pointillé court, IC = traits longs.', astros_t: 'Astres et couleurs', astros_d: 'Chaque astre a une couleur par défaut. Vous pouvez changer la couleur. Ainsi vous identifiez sur la carte par couleurs sans hiéroglyphes.' } },
+            it: { oscura: 'Scura', clara: 'Chiara', calcular: 'Calcola', ahora: 'Adesso', todos: 'Tutti', ninguno: 'Nessuno', cerrar: 'Capito', planetas: ['Sole','Luna','Mercurio','Venere','Marte','Giove','Saturno','Urano','Nettuno','Plutone'], angulos: ['Ascendente','Medio Cielo','Discendente','Fondo Cielo'], ayuda: { vista_t: 'Vista globo', vista_d: 'Scura è la mappa satellitare classica. Chiara è stile carta con mari azzurri e terre bianche, ideale per vedere le linee con contrasto.', fecha_t: 'Data e ora', fecha_d: 'Tutto è calcolato in UTC. Usa "Adesso" per il momento attuale. Le linee mostrano dove i pianeti erano angolari.', angulos_t: 'Punti angolari (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC sono mantenuti in tutte le lingue perché codice universale. Di default AC e MC. Puoi attivare DC e IC. Stili: AC = linea spessa continua, MC = puntinato corto, IC = tratti lunghi.', astros_t: 'Astri e colori', astros_d: 'Ogni astro ha un colore di default. Puoi cambiare colore. Così identifichi sulla mappa per colori senza geroglifici.' } },
+            ur: { oscura: 'گہرا', clara: 'ہلکا', calcular: 'حساب', ahora: 'ابھی', todos: 'سب', ninguno: 'کوئی نہیں', cerrar: 'سمجھ گیا', planetas: ['سورج','چاند','عطارد','زہرہ','مریخ','مشتری','زحل','یورانس','نیپچون','پلوٹو'], angulos: ['طالع','وسط السماء','سابع','رابع'], ayuda: { vista_t: 'گلوب کا منظر', vista_d: 'گہرا کلاسک سیٹلائٹ نقشہ ہے۔ ہلکا چارٹ اسٹائل ہے، نیلے سمندر سفید زمین، لکیریں زیادہ واضح۔', fecha_t: 'تاریخ اور وقت', fecha_d: 'سب کچھ UTC میں حساب ہوتا ہے۔ موجودہ لمحے کے لیے "ابھی" استعمال کریں۔ لکیریں دکھاتی ہیں کہ سیارے اس لمحے کہاں زاویائی تھے۔', angulos_t: 'زاویائی نکات (AC, MC, DC, IC)', angulos_d: 'AC, MC, DC, IC تمام زبانوں میں یکساں رہتے ہیں کیونکہ یہ آفاقی کوڈ ہے۔ بطور ڈیفالٹ AC اور MC۔ DC اور IC فعال کر سکتے ہیں۔ لائن اسٹائل: AC=موٹی ٹھوس، MC=چھوٹی نقطے دار، IC=لمبی دھاری دار۔', astros_t: 'سیارے اور رنگ', astros_d: 'ہر سیارے کا ڈیفالٹ رنگ ہے۔ آپ رنگ بدل سکتے ہیں۔ اس طرح آپ بغیر علامات کے رنگوں سے نقشے پر پہچان سکتے ہیں۔' } }
+        };
+              const PLANETS_CONFIG = [
+            { id: 'Sun', glyph: '☀️', name: 'Sol', color: '#ffd400', halo: '#000000' },
+            { id: 'Moon', glyph: '🌙', name: 'Luna', color: '#ffffff', halo: '#000000' },
+            { id: 'Mercury', glyph: '☿', name: 'Mercurio', color: '#ff00ff', halo: '#ffffff' },
+            { id: 'Venus', glyph: '♀️', name: 'Venus', color: '#00c9a7', halo: '#000000' },
+            { id: 'Mars', glyph: '♂️', name: 'Marte', color: '#e53935', halo: '#ffffff' },
+            { id: 'Jupiter', glyph: '♃', name: 'Júpiter', color: '#1e5bff', halo: '#ffffff' },
+            { id: 'Saturn', glyph: '♄', name: 'Saturno', color: '#8e8e8e', halo: '#000000' },
+            { id: 'Uranus', glyph: '♅', name: 'Urano', color: '#1b5e20', halo: '#ffffff' },
+            { id: 'Neptune', glyph: '♆', name: 'Neptuno', color: '#b794f6', halo: '#000000' },
+            { id: 'Pluto', glyph: '♇', name: 'Plutón', color: '#000000', halo: '#b0b0b0', doble: true },
+        ];
+        const ANGLES_CONFIG = [
+            { key: 'AC', name: 'Ascendente', sub: 'AC', on: true },
+            { key: 'MC', name: 'Medio Cielo', sub: 'MC', on: true },
+            { key: 'DC', name: 'Descendente', sub: 'DC', on: false },
+            { key: 'IC', name: 'Fondo del Cielo', sub: 'IC', on: false },
+        ];
+        const estado = { angulos: Object.fromEntries(ANGLES_CONFIG.map(a => [a.key, a.on])), astros: Object.fromEntries(PLANETS_CONFIG.map(p => [p.id, true])), tema: 'oscuro', idioma: 'es' };
+        let texturaClaraURL = null;
+        const texturaOscuraURL = 'https://unpkg.com/three-globe/example/img/earth-blue-marble.jpg';
+        function toggleMenu() { document.getElementById('sideMenu').classList.toggle('open'); document.getElementById('menuBtn').classList.toggle('open'); }
+        function construirMenu() {
+            const contA = document.getElementById('listaAngulos'); contA.innerHTML = '';
+            ANGLES_CONFIG.forEach(a => {
+                const row = document.createElement('label'); row.className = 'item';
+                row.innerHTML = `<input type="checkbox" ${estado.angulos[a.key] ? 'checked' : ''}><span>${a.name}</span><small style="margin-left:4px;font-weight:800">${a.sub}</small>`;
+                row.querySelector('input').addEventListener('change', e => { estado.angulos[a.key] = e.target.checked; ANGLES_CONFIG.find(x=>x.key===a.key).on = e.target.checked; actualizarGlobo(); });
+                contA.appendChild(row);
+            });
+            const contP = document.getElementById('listaAstros'); contP.innerHTML = '';
+            PLANETS_CONFIG.forEach(p => {
+                const row = document.createElement('label'); row.className = 'item';
+                const fondo = p.doble ? `linear-gradient(90deg,${p.halo} 0 30%,${p.color} 30% 70%,${p.halo} 70%)` : p.color;
+                row.innerHTML = `<input type="checkbox" ${estado.astros[p.id]?'checked':''}><span class="swatch" style="background:${fondo}"></span><input type="color" class="colorPick" value="${p.color}"><span class="glyph">${p.glyph}</span><span class="planetName">${p.name}</span>`;
+                const chk = row.querySelector('input[type="checkbox"]'); const col = row.querySelector('.colorPick'); const sw = row.querySelector('.swatch');
+                chk.addEventListener('change', e => { estado.astros[p.id] = e.target.checked; actualizarGlobo(); });
+                col.addEventListener('input', e => { p.color = e.target.value; sw.style.background = p.doble ? `linear-gradient(90deg,${p.halo} 0 30%,${p.color} 30% 70%,${p.halo} 70%)` : p.color; actualizarGlobo(); });
+                contP.appendChild(row);
+            });
+        }
+        function cambiarIdioma(lang) {
+            const t = I18N[lang]; if (!t) return;
+            estado.idioma = lang;
+            document.documentElement.lang = lang;
+            document.getElementById('btnOscuro').textContent = t.oscura;
+            document.getElementById('btnClaro').textContent = t.clara;
+            document.getElementById('btnCalcular').textContent = t.calcular;
+            document.getElementById('btnAhora').textContent = t.ahora;
+            document.getElementById('btnTodos').textContent = t.todos;
+            document.getElementById('btnNinguno').textContent = t.ninguno;
+            document.getElementById('btnCerrarAyuda').textContent = t.cerrar;
+            PLANETS_CONFIG.forEach((p,i) => p.name = t.planetas[i]);
+            ANGLES_CONFIG.forEach((a,i) => a.name = t.angulos[i]);
+            construirMenu();
+            localStorage.setItem('acg_lang', lang);
+        }
+        function abrirAyuda(tipo) {
+            const lang = estado.idioma || 'es';
+            const a = I18N[lang].ayuda;
+            const mapa = { vista: [a.vista_t, a.vista_d], fecha: [a.fecha_t, a.fecha_d], angulos: [a.angulos_t, a.angulos_d], astros: [a.astros_t, a.astros_d] };
+            const [tit, txt] = mapa[tipo] || ['', ''];
+            document.getElementById('modalTitulo').textContent = tit;
+            document.getElementById('modalTexto').textContent = txt;
+            document.getElementById('modalAyuda').classList.add('open');
+        }
+        function cerrarAyuda() { document.getElementById('modalAyuda').classList.remove('open'); }
+        function marcarAstros(v) { PLANETS_CONFIG.forEach(p => estado.astros[p.id] = v); document.querySelectorAll('#listaAstros input[type="checkbox"]').forEach(i => i.checked = v); actualizarGlobo(); }
+        const MAR = '#74ACDF', TIERRA = '#ffffff', COSTA = '#3478BA';
+        async function crearTexturaClara() {
+            try {
+                const W = 4096, H = 2048;
+                const topo = await (await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json')).json();
+                let geo = topojson.feature(topo, topo.objects.land);
+                const feats = geo.type === 'FeatureCollection' ? geo.features : [geo];
+                const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = MAR; ctx.fillRect(0, 0, W, H);
+                const X = lng => (lng + 180) / 360 * W, Y = lat => (90 - lat) / 180 * H;
+                ctx.fillStyle = TIERRA; ctx.strokeStyle = COSTA; ctx.lineWidth = 3; ctx.lineJoin = 'round';
+                feats.forEach(f => {
+                    const g = f.geometry; const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+                    polys.forEach(poly => {
+                        ctx.beginPath(); poly.forEach(ring => { ring.forEach((c, i) => i ? ctx.lineTo(X(c[0]), Y(c[1])) : ctx.moveTo(X(c[0]), Y(c[1]))); ctx.closePath(); }); ctx.fill('evenodd');
+                        ctx.beginPath(); poly.forEach(ring => { for (let i = 1; i < ring.length; i++) { const a = ring[i - 1], b = ring[i]; if (Math.abs(b[0] - a[0]) > 180) continue; if (a[1] < -89.5 && b[1] < -89.5) continue; if (Math.abs(a[0]) > 179.9 && Math.abs(b[0]) > 179.9) continue; ctx.moveTo(X(a[0]), Y(a[1])); ctx.lineTo(X(b[0]), Y(b[1])); } }); ctx.stroke();
+                    });
+                });
+                texturaClaraURL = canvas.toDataURL('image/png'); if (estado.tema === 'claro') aplicarTemaClaro();
+            } catch (e) { console.error('No se pudo cargar el mapa claro', e); }
+        }
+        function esperarMapa(mat, previo, cb, intentos = 80) { if (mat.map && mat.map !== previo) return cb(); if (intentos > 0) setTimeout(() => esperarMapa(mat, previo, cb, intentos - 1), 100); }
+        function aplicarTemaClaro() { if (!texturaClaraURL) return; const m = world.globeMaterial(); const previo = m.map; world.globeImageUrl(texturaClaraURL); esperarMapa(m, previo, () => { if (estado.tema !== 'claro') return; m.color.set(0x000000); m.specular.set(0x000000); m.shininess = 0; m.emissive.set(0xffffff); m.emissiveMap = m.map; m.bumpMap = null; m.needsUpdate = true; }); }
+        function aplicarTemaOscuro() { const m = world.globeMaterial(); m.color.set(0xffffff); m.emissive.set(0x000000); m.emissiveMap = null; if (matOscuroInfo && matOscuroInfo.specular) { m.specular.copy(matOscuroInfo.specular); m.shininess = matOscuroInfo.shininess; } m.needsUpdate = true; world.globeImageUrl(texturaOscuraURL); }
+        let matOscuroInfo = null;
+        function setTema(t) { estado.tema = t; document.getElementById('btnOscuro').classList.toggle('activo', t==='oscuro'); document.getElementById('btnClaro').classList.toggle('activo', t==='claro'); document.body.classList.toggle('tema-claro', t==='claro'); if (t==='oscuro') { aplicarTemaOscuro(); world.atmosphereColor('#4a90e2'); } else { aplicarTemaClaro(); world.atmosphereColor('#74ACDF'); } world.backgroundColor('rgba(0,0,0,0)'); }
+        const world = Globe()(document.getElementById('globeViz')).globeImageUrl(texturaOscuraURL).backgroundColor('rgba(0,0,0,0)').showAtmosphere(true).atmosphereColor('#4a90e2');
+        { const m0 = world.globeMaterial(); matOscuroInfo = { specular: m0.specular ? m0.specular.clone() : null, shininess: m0.shininess }; }
+        window.addEventListener('resize', () => { world.width(window.innerWidth).height(window.innerHeight); ajustarEncuadre(); });
+        function ajustarEncuadre() { const cam = world.camera(); const W = window.innerWidth, H = window.innerHeight; const R = 100; const d = cam.position.length(); if (d <= R) return; const tanMitadFov = Math.tan(cam.fov * Math.PI / 360); const rpx = (H / 2) * R / (Math.sqrt(d * d - R * R) * tanMitadFov); const cx = Math.min(W / 2, 8 + rpx); const cy = Math.min(H / 2, 8 + rpx); cam.setViewOffset(W, H, W / 2 - cx, H / 2 - cy, W, H); }
+        world.controls().addEventListener('change', ajustarEncuadre);
+        world.pathPointLat(d => d.lat).pathPointLng(d => d.lng).pathColor(d => d.color).pathStroke(d => d.stroke).pathPointAlt(p => p.alt).pathDashLength(d => d.dashLen).pathDashGap(d => d.dashGap).pathTransitionDuration(0);
+        world.htmlElement(d => { const el = document.createElement('div'); el.textContent = d.tag; el.style.color = d.color; el.style.fontSize = '15px'; el.style.fontWeight = '800'; el.style.whiteSpace = 'nowrap'; el.style.textShadow = `-1px -1px 0 ${d.halo}, 1px -1px 0 ${d.halo}, -1px 1px 0 ${d.halo}, 1px 1px 0 ${d.halo}, 0 0 4px ${d.halo}`; el.style.pointerEvents = 'none'; el.style.transform = 'translate(-50%, -50%)'; return el; });
+        function usarAhora() { const iso = new Date().toISOString(); document.getElementById('dateInput').value = iso.split('T')[0]; document.getElementById('timeInput').value = iso.split('T')[1].substring(0, 5); actualizarGlobo(); }
+        window.onload = () => { construirMenu(); crearTexturaClara(); ajustarEncuadre(); usarAhora(); const saved = localStorage.getItem('acg_lang') || 'es'; document.getElementById('langSelect').value = saved; cambiarIdioma(saved); };
+        const normLng = x => ((x + 540) % 360) - 180;
+        function nuevaLinea(points, color, dashLen, dashGap, stroke, alt) { points.forEach(p => p.alt = alt); points.color = color; points.dashLen = dashLen; points.dashGap = dashGap; points.stroke = stroke; return points; }
+        function agregarLinea(lista, puntos, planet, tipoAngulo, dashLen, dashGap) { let baseStroke = 2.5; if (tipoAngulo === 'AC') baseStroke = 3.5; if (tipoAngulo === 'DC') baseStroke = 3.125; if (planet.doble) { lista.push(nuevaLinea(puntos.map(p => ({...p})), planet.halo, dashLen, dashGap, baseStroke + 0.5, 0.001)); lista.push(nuevaLinea(puntos.map(p => ({...p})), planet.color, dashLen, dashGap, baseStroke, 0.006)); } else { lista.push(nuevaLinea(puntos, planet.color, dashLen, dashGap, baseStroke, 0.002)); } }
+        function curvaHorizonte(ra_deg, dec_deg, gmst_deg, signo) { const puntos = []; for (let lat = -80; lat <= 80; lat += 2) { const val = -Math.tan(lat * Math.PI / 180) * Math.tan(dec_deg * Math.PI / 180); if (val >= -1 && val <= 1) { const lha = signo * Math.acos(val) * 180 / Math.PI; puntos.push({ lat: lat, lng: normLng(ra_deg + lha - gmst_deg) }); } } return puntos; }
+        function partirSegmentos(puntos) { const segmentos = []; let actual = []; for (let i=0; i<puntos.length; i++) { if (i>0 && Math.abs(puntos[i].lng - puntos[i-1].lng) > 180) { segmentos.push(actual); actual=[]; } actual.push(puntos[i]); } if (actual.length>0) segmentos.push(actual); return segmentos; }
+        function actualizarGlobo() {
+            const dateInput = document.getElementById('dateInput').value; const timeInput = document.getElementById('timeInput').value; if (!dateInput || !timeInput) return;
+            const date = new Date(dateInput + 'T' + timeInput + ':00Z'); const gst_hours = Astronomy.SiderealTime(date); const gmst_deg = gst_hours * 15; const observer = new Astronomy.Observer(0,0,0);
+            const todasLasLineas = []; const todosLosGlifos = [];
+            PLANETS_CONFIG.forEach((planet, idx) => {
+                if (!estado.astros[planet.id]) return; const eq = Astronomy.Equator(planet.id, date, observer, true, true); const ra_deg = eq.ra*15; const dec_deg = eq.dec; const base = { color: planet.color, halo: planet.halo };
+                const latGlifo = (idx - (PLANETS_CONFIG.length - 1) / 2) * 12; const lonMC = normLng(ra_deg - gmst_deg);
+                if (estado.angulos.MC) { agregarLinea(todasLasLineas, [{lat:89,lng:lonMC},{lat:-89,lng:lonMC}], planet, 'MC', 0.02, 0.015); todosLosGlifos.push({...base, lat:latGlifo, lng:lonMC, tag:'MC'}); }
+                if (estado.angulos.IC) { const lonIC = normLng(lonMC+180); agregarLinea(todasLasLineas, [{lat:89,lng:lonIC},{lat:-89,lng:lonIC}], planet, 'IC', 0.008, 0.02); todosLosGlifos.push({...base, lat:latGlifo, lng:lonIC, tag:'IC'}); }
+                [{key:'AC',signo:-1},{key:'DC',signo:1}].forEach(h => { if (!estado.angulos[h.key]) return; const puntos = curvaHorizonte(ra_deg, dec_deg, gmst_deg, h.signo); partirSegmentos(puntos).forEach(seg => { if (seg.length>1) agregarLinea(todasLasLineas, seg, planet, h.key, 1, 0); }); if (puntos.length>0) { const medio = puntos[Math.floor(puntos.length/2)]; todosLosGlifos.push({...base, lat:medio.lat, lng:medio.lng, tag:h.key}); } });
+            });
+            world.pathsData(todasLasLineas); world.htmlElementsData(todosLosGlifos);
+        }
+    </script>
+  <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
+  </script>
+</body>
+</html>
+      
